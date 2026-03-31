@@ -59,7 +59,7 @@ export interface AtBat {
   batterOut?: boolean  // explicitly track whether the batter is out (for DP/TP where batter may reach)
 }
 
-export type BaserunningEventType = 'SB' | 'CS' | 'PKO'
+export type BaserunningEventType = 'SB' | 'CS' | 'PKO' | 'WP' | 'PB' | 'BK'
 
 export interface BaserunningEvent {
   id: string
@@ -142,6 +142,10 @@ export interface GameState {
   outs: number
   runners: Runners
   status: 'setup' | 'in_progress' | 'final'
+  /** MLB gamePk for catch-up and refresh (only set for MLB-sourced games). */
+  mlbGamePk?: string
+  /** Index of last replayed play from the MLB live feed (for incremental catch-up). */
+  lastReplayedPlayIndex?: number
 }
 
 // Helpers
@@ -191,6 +195,6 @@ export function atBatDisplayText(atBat: AtBat): string {
 export function atBatOutsRecorded(atBat: AtBat): number {
   const runnerOuts = atBat.runnerMovements.filter(movement => movement.result === 'out').length
   const isMultiOut = atBat.outcome === 'DP' || atBat.outcome === 'TP'
-  const batterIsOut = isMultiOut ? (atBat.batterOut !== false) : isOut(atBat.outcome)
+  const batterIsOut = isMultiOut ? (atBat.batterOut !== false) : (atBat.batterOut ?? isOut(atBat.outcome))
   return runnerOuts + (batterIsOut ? 1 : 0)
 }

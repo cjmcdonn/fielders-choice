@@ -4,12 +4,15 @@ import SplitPanel from '@/components/layout/SplitPanel'
 import GameSetup from '@/components/scoring/GameSetup'
 import ScoringPanel from '@/components/scoring/ScoringPanel'
 import ScorecardPanel from '@/components/scorecard/ScorecardPanel'
+import CatchUpDialog from '@/components/scoring/CatchUpDialog'
 
 export default function App() {
   const status = useGameStore(state => state.game.status)
   const newGame = useGameStore(state => state.newGame)
   const loadGame = useGameStore(state => state.loadGame)
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
+  const [catchUpGamePk, setCatchUpGamePk] = useState<string | null>(null)
+  const [catchUpStatus, setCatchUpStatus] = useState<string>('')
 
   const handleNew = () => {
     const game = useGameStore.getState().game
@@ -52,6 +55,16 @@ export default function App() {
     }
   }
 
+  const handleCatchUpRequest = (gamePk: string, gameStatus: string) => {
+    setCatchUpGamePk(gamePk)
+    setCatchUpStatus(gameStatus)
+  }
+
+  const handleCatchUpDismiss = () => {
+    setCatchUpGamePk(null)
+    setCatchUpStatus('')
+  }
+
   const leftPanel = (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
@@ -79,7 +92,10 @@ export default function App() {
       </div>
       {/* Main content */}
       <div className="flex-1 overflow-hidden">
-        {status === 'setup' ? <GameSetup /> : <ScoringPanel />}
+        {status === 'setup'
+          ? <GameSetup onCatchUpRequest={handleCatchUpRequest} />
+          : <ScoringPanel />
+        }
       </div>
     </div>
   )
@@ -90,6 +106,14 @@ export default function App() {
         left={leftPanel}
         right={<ScorecardPanel />}
       />
+      {catchUpGamePk && (
+        <CatchUpDialog
+          gamePk={catchUpGamePk}
+          gameStatus={catchUpStatus}
+          onComplete={handleCatchUpDismiss}
+          onSkip={handleCatchUpDismiss}
+        />
+      )}
       {showNewGameDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-[#1c2128] border border-gray-700 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">

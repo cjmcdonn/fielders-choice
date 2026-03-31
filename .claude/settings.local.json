@@ -21,7 +21,24 @@
       "Bash(npx tsc:*)",
       "Bash(find C:UserscjmcdDevfielders-choice -maxdepth 3 -type f \\\\\\(-name *test* -o -name *spec* -o -name vitest* -o -name jest* \\\\\\))",
       "Bash(npx vitest:*)",
-      "Bash(grep -E \"tsconfig|\\\\.config|\\\\.json$\")"
+      "Bash(grep -E \"tsconfig|\\\\.config|\\\\.json$\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?date=2024-07-04&sportId=1\")",
+      "Bash(echo $TEMP)",
+      "Bash(mkdir -p \"$USERPROFILE/tmp\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?date=2024-07-04&sportId=1\" -o \"$USERPROFILE/tmp/schedule.json\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\(''fs''\\).readFileSync\\(process.env.USERPROFILE+''/tmp/schedule.json'',''utf8''\\)\\); d.dates[0].games.slice\\(0,5\\).forEach\\(g => console.log\\(g.gamePk, g.teams.away.team.name, ''@'', g.teams.home.team.name, g.status.detailedState\\)\\)\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1.1/game/745726/feed/live\" -o \"$USERPROFILE/tmp/game.json\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\(''fs''\\).readFileSync\\(process.env.USERPROFILE+''/tmp/game.json'',''utf8''\\)\\); console.log\\(''Top-level keys:'', Object.keys\\(d\\)\\); console.log\\(''liveData keys:'', Object.keys\\(d.liveData\\)\\); console.log\\(''plays keys:'', Object.keys\\(d.liveData.plays\\)\\); console.log\\(''Number of allPlays:'', d.liveData.plays.allPlays.length\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1.1/game/744834/feed/live\" -o \"$USERPROFILE/tmp/game2.json\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1.1/game/744912/feed/live\" -o \"$USERPROFILE/tmp/game3.json\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?startDate=2024-03-28&endDate=2024-04-03&sportId=1\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?startDate=2025-03-27&endDate=2025-04-02&sportId=1\")",
+      "Bash(node scripts/extract-scenarios.mjs)",
+      "Bash(node -e \"const s = require\\(''./scripts/scenarios.json''\\); const types = [...new Set\\(s.map\\(x=>x.eventType\\)\\)].sort\\(\\); types.forEach\\(t => { const examples = s.filter\\(x=>x.eventType===t\\); console.log\\(t + '' \\('' + examples.length + ''\\):''\\); examples.slice\\(0,2\\).forEach\\(e => console.log\\(''  '' + e.runnerState + '' '' + e.outs + ''out batterEnd='' + e.batterEnd + '' runners='' + JSON.stringify\\(e.runnerMovements\\) + '' fielders='' + JSON.stringify\\(e.fielders\\)\\)\\); }\\)\")",
+      "Bash(node -e \"const s = require\\(''./scripts/scenarios.json''\\); s.filter\\(x=>x.eventType===''strikeout'' && x.batterEnd===''1B''\\).forEach\\(e => console.log\\(JSON.stringify\\(e, null, 2\\)\\)\\)\")",
+      "Bash(node -e \"const s = require\\(''./scripts/scenarios.json''\\); [''wild_pitch'',''other_out'',''strikeout_double_play'',''sac_fly_double_play'',''pickoff_caught_stealing_2b''].forEach\\(t => { const ex = s.filter\\(x=>x.eventType===t\\); ex.forEach\\(e => console.log\\(JSON.stringify\\(e, null, 2\\)\\)\\); }\\)\")",
+      "Bash(node -e \"fetch\\(''https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-03-30&hydrate=lineups,probablePitcher''\\).then\\(r=>r.json\\(\\)\\).then\\(d=>{for\\(const dt of d.dates||[]\\)for\\(const g of dt.games||[]\\)console.log\\(g.gamePk, g.status?.detailedState, g.teams.away.team.name, ''@'', g.teams.home.team.name\\)}\\)\")"
     ]
   }
 }

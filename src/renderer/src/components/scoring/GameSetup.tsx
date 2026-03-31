@@ -7,6 +7,7 @@ import {
   fetchNCAAGames, fetchNCAALineup,
   type GameOption, type LoadedLineup
 } from '@/services/lineupService'
+// CatchUpDialog is rendered by App.tsx as an overlay
 
 const POSITIONS: FieldingPosition[] = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF']
 
@@ -27,7 +28,11 @@ const emptyRow = (): LineupRow => ({
 type SetupStep = 'source' | 'pickGame' | 'lineup'
 type LineupSource = 'mlb' | 'ncaa' | 'manual'
 
-export default function GameSetup() {
+interface GameSetupProps {
+  onCatchUpRequest?: (gamePk: string, gameStatus: string) => void
+}
+
+export default function GameSetup({ onCatchUpRequest }: GameSetupProps) {
   const { setupTeams, setPlayers, setLineup, startGame } = useGameStore()
   const [step, setStep] = useState<SetupStep>('source')
   const [source, setSource] = useState<LineupSource | null>(null)
@@ -52,6 +57,7 @@ export default function GameSetup() {
     Array.from({ length: 9 }, (_, i) => ({ ...emptyRow(), position: POSITIONS[i] }))
   )
   const [activeTab, setActiveTab] = useState<'away' | 'home'>('away')
+  const [selectedGame, setSelectedGame] = useState<GameOption | null>(null)
 
   const updateRow = (
     side: 'away' | 'home',
@@ -112,6 +118,7 @@ export default function GameSetup() {
   const handleGameSelect = async (game: GameOption) => {
     setLoadingLineup(true)
     setGameError(null)
+    setSelectedGame(game)
     try {
       const fetcher = source === 'mlb' ? fetchMLBLineup : fetchNCAALineup
       const lineup: LoadedLineup = await fetcher(game.id)
@@ -161,6 +168,15 @@ export default function GameSetup() {
     }
 
     startGame()
+
+    // For MLB games that are in-progress or completed, offer to catch up
+    if (source === 'mlb' && selectedGame && onCatchUpRequest) {
+      const status = selectedGame.status
+      const hasPlays = status !== 'Scheduled' && status !== 'Pre-Game' && status !== 'Warmup' && status !== ''
+      if (hasPlays) {
+        onCatchUpRequest(selectedGame.id, status)
+      }
+    }
   }
 
   // ─── Step: Source Selection ────────────────────────────────

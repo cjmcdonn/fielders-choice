@@ -161,6 +161,16 @@ interface GameStore {
   redo: () => void
   loadGame: (game: GameState) => void
 
+  // MLB catch-up support
+  setMlbGamePk: (gamePk: string) => void
+  setLastReplayedPlayIndex: (index: number) => void
+  addPlayer: (side: 'away' | 'home', player: Player) => void
+  addLineupEntry: (side: 'away' | 'home', slotIndex: number, entry: { playerId: string; position: FieldingPosition }) => void
+  /** Record an at-bat without adding to undo history (used during catch-up replay). */
+  recordAtBatSilent: (outcome: AtBatOutcome, fielders?: number[], runnerMovements?: RunnerMovement[], batterOut?: boolean) => void
+  /** Record a baserunning event without adding to undo history. */
+  recordBaserunningSilent: (type: BaserunningEventType, runnerId: string, fromBase: 1 | 2 | 3) => void
+
   // Computed-like getters
   getCurrentBattingTeam: () => 'away' | 'home'
   getCurrentBatterPlayer: () => Player | null
@@ -256,9 +266,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let rbis = runnerMovements.filter(movement => movement.result === 'scored').length
     if (outcome === 'HR') rbis++ // batter scores too
 
-    // For DP/TP, determine if batter is out (default true if not specified)
+    // Determine if batter is out.
+    // For DP/TP: default true unless explicitly false.
+    // For other outcomes: use explicit batterOut if provided, otherwise derive from outcome type.
+    // This supports dropped third strike (K with batterOut: false).
     const isMultiOut = outcome === 'DP' || outcome === 'TP'
-    const batterIsOut = isMultiOut ? (batterOut !== false) : isOut(outcome)
+    const batterIsOut = batterOut ?? (isMultiOut ? true : isOut(outcome))
 
     const atBat: AtBat = {
       id: uuid(),
@@ -268,7 +281,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       fielders,
       rbis,
       runnerMovements,
-      batterOut: isMultiOut ? batterIsOut : undefined,
+      batterOut: (isMultiOut || batterOut !== undefined) ? batterIsOut : undefined,
     }
 
     const halfInning = ensureHalfInning(gameCopy)
@@ -293,7 +306,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // Place batter
-    const batterReaches = isReach(outcome) || (isMultiOut && !batterIsOut)
+    const batterReaches = isReach(outcome) || (isMultiOut && !batterIsOut) || (!batterIsOut && isOut(outcome))
     if (batterReaches) {
       if (outcome === 'HR') {
         // Batter scores, don't place on base
@@ -329,8 +342,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const halfInning = ensureHalfInning(gameCopy)
 
     let toBase: 0 | 1 | 2 | 3 | 4
-    if (type === 'SB') {
-      // Stolen base: advance one base
+    const advanceTypes: BaserunningEventType[] = ['SB', 'WP', 'PB', 'BK']
+    if (advanceTypes.includes(type)) {
+      // Runner advances one base
       toBase = (fromBase + 1) as 2 | 3 | 4
     } else {
       // CS or PKO: runner is out
@@ -351,7 +365,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (fromBase === 2) gameCopy.runners.second = null
     if (fromBase === 3) gameCopy.runners.third = null
 
-    if (type === 'SB') {
+    if (advanceTypes.includes(type)) {
       if (toBase === 2) gameCopy.runners.second = runnerId
       if (toBase === 3) gameCopy.runners.third = runnerId
       if (toBase === 4) halfInning.runs++
@@ -393,6 +407,145 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   loadGame: (loadedGame) => set({ game: loadedGame, history: [], futureHistory: [] }),
+
+  // ─── MLB Catch-Up Support ───────────────────────────────
+
+  setMlbGamePk: (gamePk) => set(state => ({
+    game: { ...state.game, mlbGamePk: gamePk }
+  })),
+
+  setLastReplayedPlayIndex: (index) => set(state => ({
+    game: { ...state.game, lastReplayedPlayIndex: index }
+  })),
+
+  addPlayer: (side, player) => set(state => {
+    const team = { ...state.game[side] }
+    team.players = [...team.players, player]
+    return { game: { ...state.game, [side]: team } }
+  }),
+
+  addLineupEntry: (side, slotIndex, entry) => set(state => {
+    const team = { ...state.game[side] }
+    team.lineup = team.lineup.map((slot, index) => {
+      if (index !== slotIndex) return slot
+      return {
+        ...slot,
+        entries: [...slot.entries, {
+          playerId: entry.playerId,
+          position: entry.position,
+          enteredInning: state.game.currentInning,
+          enteredHalfInning: state.game.currentHalfInning
+        }]
+      }
+    })
+    return { game: { ...state.game, [side]: team } }
+  }),
+
+  recordAtBatSilent: (outcome, fielders, customRunnerMovements, batterOut) => {
+    // Same logic as recordAtBat but without history tracking
+    const state = get()
+    const gameCopy = JSON.parse(JSON.stringify(state.game)) as GameState
+
+    const side = gameCopy.currentHalfInning === 'top' ? 'away' : 'home'
+    const batterIndex = getCurrentBatterIndex(gameCopy)
+    const team = gameCopy[side]
+
+    if (!team.lineup[batterIndex]?.entries.length) return
+
+    const batterId = team.lineup[batterIndex].entries[
+      team.lineup[batterIndex].entries.length - 1
+    ].playerId
+
+    const runnerMovements = customRunnerMovements || defaultRunnerAdvance(outcome, gameCopy.runners, batterId)
+
+    let rbis = runnerMovements.filter(movement => movement.result === 'scored').length
+    if (outcome === 'HR') rbis++
+
+    const isMultiOut = outcome === 'DP' || outcome === 'TP'
+    const batterIsOut = batterOut ?? (isMultiOut ? true : isOut(outcome))
+
+    const atBat: AtBat = {
+      id: uuid(),
+      batterId,
+      lineupPosition: batterIndex + 1,
+      outcome,
+      fielders,
+      rbis,
+      runnerMovements,
+      batterOut: (isMultiOut || batterOut !== undefined) ? batterIsOut : undefined,
+    }
+
+    const halfInning = ensureHalfInning(gameCopy)
+    halfInning.events.push({ kind: 'at-bat', data: atBat })
+
+    if (isHit(outcome)) halfInning.hits++
+    if (outcome === 'E') halfInning.errors++
+    halfInning.runs += runnerMovements.filter(movement => movement.result === 'scored').length
+    if (outcome === 'HR') halfInning.runs++
+
+    for (const movement of runnerMovements) {
+      if (movement.startBase === 1) gameCopy.runners.first = null
+      if (movement.startBase === 2) gameCopy.runners.second = null
+      if (movement.startBase === 3) gameCopy.runners.third = null
+    }
+    for (const movement of runnerMovements) {
+      if (movement.endBase === 1) gameCopy.runners.first = movement.runnerId
+      if (movement.endBase === 2) gameCopy.runners.second = movement.runnerId
+      if (movement.endBase === 3) gameCopy.runners.third = movement.runnerId
+    }
+
+    const batterReaches = isReach(outcome) || (isMultiOut && !batterIsOut) || (!batterIsOut && isOut(outcome))
+    if (batterReaches) {
+      if (outcome === 'HR') { /* batter scores */ }
+      else if (outcome === '3B') gameCopy.runners.third = batterId
+      else if (outcome === '2B') gameCopy.runners.second = batterId
+      else gameCopy.runners.first = batterId
+    }
+
+    gameCopy.outs += atBatOutsRecorded(atBat)
+    if (gameCopy.outs >= 3) advanceHalfInning(gameCopy)
+
+    set({ game: gameCopy })
+  },
+
+  recordBaserunningSilent: (type, runnerId, fromBase) => {
+    const state = get()
+    const gameCopy = JSON.parse(JSON.stringify(state.game)) as GameState
+
+    const halfInning = ensureHalfInning(gameCopy)
+
+    let toBase: 0 | 1 | 2 | 3 | 4
+    const advanceTypes: BaserunningEventType[] = ['SB', 'WP', 'PB', 'BK']
+    if (advanceTypes.includes(type)) {
+      toBase = (fromBase + 1) as 2 | 3 | 4
+    } else {
+      toBase = 0
+    }
+
+    const baserunningEvent: BaserunningEvent = {
+      id: uuid(),
+      type,
+      runnerId,
+      fromBase,
+      toBase
+    }
+    halfInning.events.push({ kind: 'baserunning', data: baserunningEvent })
+
+    if (fromBase === 1) gameCopy.runners.first = null
+    if (fromBase === 2) gameCopy.runners.second = null
+    if (fromBase === 3) gameCopy.runners.third = null
+
+    if (advanceTypes.includes(type)) {
+      if (toBase === 2) gameCopy.runners.second = runnerId
+      if (toBase === 3) gameCopy.runners.third = runnerId
+      if (toBase === 4) halfInning.runs++
+    } else {
+      gameCopy.outs++
+      if (gameCopy.outs >= 3) advanceHalfInning(gameCopy)
+    }
+
+    set({ game: gameCopy })
+  },
 
   getCurrentBattingTeam: () => {
     return get().game.currentHalfInning === 'top' ? 'away' : 'home'
