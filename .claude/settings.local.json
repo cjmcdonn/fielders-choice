@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL \"https://raw.githubusercontent.com/gkuhlman/opencard/main/src/engine/generate.js\" -o /c/Users/cjmcd/Dev/fielders-choice/src/renderer/src/engine/generate.js)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/gkuhlman/opencard/main/src/engine/configUtils.js\" -o /c/Users/cjmcd/Dev/fielders-choice/src/renderer/src/engine/configUtils.js)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/gkuhlman/opencard/main/src/engine/colorUtils.js\" -o /c/Users/cjmcd/Dev/fielders-choice/src/renderer/src/engine/colorUtils.js)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/gkuhlman/opencard/main/src/engine/defaults.json\" -o /c/Users/cjmcd/Dev/fielders-choice/src/renderer/src/engine/defaults.json)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/gkuhlman/opencard/main/src/presets.js\" -o /c/Users/cjmcd/Dev/fielders-choice/src/renderer/src/engine/presets.js)",
+      "Bash(npm install:*)",
+      "Bash(npx electron-vite:*)",
+      "Bash(taskkill //F //IM electron.exe)",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?date=2026-03-29&sportId=1\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?date=2025-04-15&sportId=1&hydrate=lineups\")",
+      "Bash(curl -s \"https://statsapi.mlb.com/api/v1/schedule?date=2025-04-15&sportId=1\")",
+      "WebSearch",
+      "WebFetch(domain:statsapi.mlb.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ncaa-api.henrygd.me)",
+      "WebFetch(domain:site.api.espn.com)",
+      "Bash(npx tsc:*)",
+      "Bash(find C:UserscjmcdDevfielders-choice -maxdepth 3 -type f \\\\\\(-name *test* -o -name *spec* -o -name vitest* -o -name jest* \\\\\\))",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}
