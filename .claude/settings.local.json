@@ -20,7 +20,8 @@
       "WebFetch(domain:site.api.espn.com)",
       "Bash(npx tsc:*)",
       "Bash(find C:UserscjmcdDevfielders-choice -maxdepth 3 -type f \\\\\\(-name *test* -o -name *spec* -o -name vitest* -o -name jest* \\\\\\))",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(grep -E \"tsconfig|\\\\.config|\\\\.json$\")"
     ]
   }
 }
